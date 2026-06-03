@@ -180,6 +180,19 @@ select {
         <span class="fbox-title">Rival</span>
         <select id="res-rivalSel" onchange="resApplyFilters()"></select>
       </div>
+      <div class="fbox" style="flex-basis: 100%;">
+        <span class="fbox-title">Sort By</span>
+        <select id="res-sortSel" onchange="resApplyFilters()">
+          <option value="date-desc">Date (Newest First)</option>
+          <option value="date-asc">Date (Oldest First)</option>
+          <option value="home-asc">Home (A–Z)</option>
+          <option value="home-desc">Home (Z–A)</option>
+          <option value="away-asc">Away (A–Z)</option>
+          <option value="away-desc">Away (Z–A)</option>
+          <option value="details-asc">Details (A–Z)</option>
+          <option value="details-desc">Details (Z–A)</option>
+        </select>
+      </div>
     </div>
   </div>
   <div class="twrap-outer">
@@ -243,7 +256,7 @@ let MD_GAMES = [];
 let RES_GAMES = [];
 
 let mdFilters = { date: 'all', age: 'all' };
-let resFilters = { date: 'all', div: 'all', rival: 'all', st: new Set(['win','draw','loss','nr','np']) };
+let resFilters = { date: 'all', div: 'all', rival: 'all', sort: 'date-desc', st: new Set(['win','draw','loss','nr','np']) };
 const ALL_ST = ['win','draw','loss','nr','np'];
 
 async function loadData() {
@@ -384,6 +397,7 @@ function resApplyFilters() {
   resFilters.date = document.getElementById('res-dateSel').value;
   resFilters.div = document.getElementById('res-divSel').value;
   resFilters.rival = document.getElementById('res-rivalSel').value;
+  resFilters.sort = document.getElementById('res-sortSel').value;
 
   const preFiltered = RES_GAMES.filter(g => {
     if (resFilters.date !== 'all' && g.date !== resFilters.date) return false;
@@ -398,6 +412,28 @@ function resApplyFilters() {
   renderStats(preFiltered);
 
   const filtered = preFiltered.filter(g => resFilters.st.has(g.result_type));
+
+  // Sort
+  const [sortKey, sortDir] = resFilters.sort.split('-');
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (sortKey === 'date') {
+      va = normDS(a.date_sort);
+      vb = normDS(b.date_sort);
+    } else if (sortKey === 'home') {
+      va = (a.home || '').toLowerCase();
+      vb = (b.home || '').toLowerCase();
+    } else if (sortKey === 'away') {
+      va = (a.away || '').toLowerCase();
+      vb = (b.away || '').toLowerCase();
+    } else if (sortKey === 'details') {
+      // Sort by division then date
+      va = (a.division || '') + normDS(a.date_sort);
+      vb = (b.division || '') + normDS(b.date_sort);
+    }
+    const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+    return sortDir === 'desc' ? -cmp : cmp;
+  });
 
   document.getElementById('res-rcount').innerHTML = `Showing <span>${filtered.length}</span> results`;
 
